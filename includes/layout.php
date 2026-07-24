@@ -25,6 +25,7 @@ function page_header(string $title, bool $admin = false): void
     <a class="brand" href="<?= e(url()) ?>"><?= e($site) ?></a>
     <nav>
         <a href="<?= e(url()) ?>">หน้าหลัก</a>
+        <a href="<?= e(url('find.php')) ?>">ค้นหาด้วยใบหน้า</a>
         <?php if ($admin && $user): ?>
             <a href="<?= e(url('admin/')) ?>">หลังบ้าน</a>
             <a href="<?= e(url('logout.php')) ?>">ออกจากระบบ</a>
