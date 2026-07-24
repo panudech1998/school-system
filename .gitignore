@@ -1,0 +1,10 @@
+config/app.local.php
+face-service/.venv/
+face-service/__pycache__/
+face-service/data/*.json
+storage/photos/*
+!storage/photos/.htaccess
+!storage/photos/.gitkeep
+*.log
+.DS_Store
+Thumbs.db
