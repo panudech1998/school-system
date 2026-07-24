@@ -4,22 +4,22 @@ on:
   push:
     branches:
       - agent/swk-phonto-new-system
-    paths:
-      - '.package/**'
-      - '.github/workflows/rebuild-standalone.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   rebuild:
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    if: ${{ github.event_name == 'pull_request' || !contains(github.event.head_commit.message, '[skip ci]') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout source branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Verify and extract standalone project
         shell: bash
@@ -43,8 +43,9 @@ jobs:
       - name: Publish clean standalone source
         shell: bash
         run: |
+          TARGET_BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Build fresh standalone SWK_Phonto source [skip ci]'
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push origin HEAD:"${TARGET_BRANCH}"
