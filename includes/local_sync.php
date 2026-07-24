@@ -124,11 +124,12 @@ function sync_event_folder(array $event, bool $indexFaces = true): array
                 $result['failed'][] = 'คัดลอกรูปไม่สำเร็จ: ' . basename($realSource);
                 continue;
             }
-            if (!@rename($temporaryPath, $absolutePath)) {
+            if (!copy($temporaryPath, $absolutePath)) {
                 @unlink($temporaryPath);
                 $result['failed'][] = 'บันทึกรูปไม่สำเร็จ: ' . basename($realSource);
                 continue;
             }
+            @unlink($temporaryPath);
         }
 
         if ($existing) {
