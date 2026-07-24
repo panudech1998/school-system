@@ -24,7 +24,14 @@ jobs:
       - name: Verify and extract standalone project
         shell: bash
         run: |
-          cat .package/part* | base64 --decode > /tmp/SWK_Phonto.zip
+          cat \
+            .package/part00 \
+            .package/part01 \
+            .package/fix02_0 .package/fix02_1 .package/fix02_2 .package/fix02_3 \
+            .package/part03 \
+            .package/part04 \
+            .package/fix05_0 .package/fix05_1 .package/fix05_2 .package/fix05_3 \
+            .package/part06 | base64 --decode > /tmp/SWK_Phonto.zip
           echo '6be9c0c3b52fb89601ebc9e8029e3f5c5386da95cbaee78ca7b9812ecb627a08  /tmp/SWK_Phonto.zip' | sha256sum --check
           rm -rf /tmp/swk-phonto
           mkdir -p /tmp/swk-phonto
