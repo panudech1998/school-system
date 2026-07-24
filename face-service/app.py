@@ -20,6 +20,7 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+app.config["JSON_AS_ASCII"] = False
 index_lock = threading.Lock()
 
 
@@ -28,7 +29,8 @@ def load_index() -> list[dict[str, Any]]:
     if not INDEX_FILE.exists():
         return []
     try:
-        return json.loads(INDEX_FILE.read_text(encoding="utf-8"))
+        data = json.loads(INDEX_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
     except (OSError, json.JSONDecodeError):
         return []
 
@@ -40,12 +42,12 @@ def save_index(records: list[dict[str, Any]]) -> None:
     temporary.replace(INDEX_FILE)
 
 
-def embeddings_from_image(path: str, enforce_detection: bool = True) -> list[list[float]]:
+def embeddings_from_image(path: str) -> list[list[float]]:
     faces = DeepFace.represent(
         img_path=path,
         model_name=MODEL_NAME,
         detector_backend=DETECTOR_BACKEND,
-        enforce_detection=enforce_detection,
+        enforce_detection=True,
         align=True,
     )
     embeddings: list[list[float]] = []
@@ -59,8 +61,10 @@ def embeddings_from_image(path: str, enforce_detection: bool = True) -> list[lis
 def cosine_similarity(left: list[float], right: list[float]) -> float:
     vector_left = np.asarray(left, dtype=np.float32)
     vector_right = np.asarray(right, dtype=np.float32)
+    if vector_left.shape != vector_right.shape or vector_left.size == 0:
+        return 0.0
     denominator = float(np.linalg.norm(vector_left) * np.linalg.norm(vector_right))
-    if denominator == 0.0 or vector_left.shape != vector_right.shape:
+    if denominator == 0.0:
         return 0.0
     return float(np.dot(vector_left, vector_right) / denominator)
 
@@ -75,19 +79,27 @@ def health():
 @app.post("/index")
 def index_photo():
     payload = request.get_json(silent=True) or {}
-    event_id = int(payload.get("event_id", 0))
-    photo_id = int(payload.get("photo_id", 0))
+    try:
+        event_id = int(payload.get("event_id", 0))
+        photo_id = int(payload.get("photo_id", 0))
+    except (TypeError, ValueError):
+        return jsonify({"message": "รหัสกิจกรรมหรือรูปไม่ถูกต้อง"}), 400
+
     image_path = str(payload.get("path", ""))
     if event_id <= 0 or photo_id <= 0 or not image_path or not os.path.isfile(image_path):
         return jsonify({"message": "ข้อมูลรูปสำหรับทำดัชนีไม่ถูกต้อง"}), 400
 
     try:
-        embeddings = embeddings_from_image(image_path, enforce_detection=False)
-    except Exception as exc:  # DeepFace ส่ง exception ตาม detector/model ที่ใช้
-        return jsonify({"message": f"ประมวลผลใบหน้าไม่สำเร็จ: {exc}"}), 422
+        embeddings = embeddings_from_image(image_path)
+    except Exception as exc:
+        return jsonify({"message": f"ไม่พบใบหน้าที่ตรวจจับได้หรือประมวลผลไม่สำเร็จ: {exc}"}), 422
 
     with index_lock:
-        records = [record for record in load_index() if int(record["photo_id"]) != photo_id]
+        records = [
+            record
+            for record in load_index()
+            if int(record.get("photo_id", 0)) != photo_id
+        ]
         for embedding in embeddings:
             records.append({"event_id": event_id, "photo_id": photo_id, "embedding": embedding})
         save_index(records)
@@ -97,29 +109,38 @@ def index_photo():
 
 @app.post("/search")
 def search_faces():
-    event_id = int(request.form.get("event_id", "0"))
-    threshold = float(request.form.get("threshold", "0.72"))
+    try:
+        event_id = int(request.form.get("event_id", "0"))
+        threshold = float(request.form.get("threshold", "0.72"))
+    except (TypeError, ValueError):
+        return jsonify({"message": "ค่ากิจกรรมหรือความเหมือนไม่ถูกต้อง"}), 400
+
     threshold = min(max(threshold, 0.50), 0.95)
     selfie = request.files.get("selfie")
     if event_id <= 0 or selfie is None or not selfie.filename:
         return jsonify({"message": "ไม่พบรูปใบหน้าสำหรับค้นหา"}), 400
 
-    suffix = Path(selfie.filename).suffix.lower() or ".jpg"
+    suffix = Path(selfie.filename).suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        suffix = ".jpg"
+
     temporary_path = ""
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
             selfie.save(temporary)
             temporary_path = temporary.name
 
-        query_embeddings = embeddings_from_image(temporary_path, enforce_detection=True)
-        if not query_embeddings:
-            return jsonify({"message": "ไม่พบใบหน้าที่ชัดเจนในภาพ"}), 422
+        query_embeddings = embeddings_from_image(temporary_path)
+        if len(query_embeddings) != 1:
+            return jsonify({"message": "กรุณาใช้รูปที่มีใบหน้าของผู้ค้นหาเพียงคนเดียว"}), 422
         query_embedding = query_embeddings[0]
 
         best_by_photo: dict[int, float] = {}
         with index_lock:
             event_records = [
-                record for record in load_index() if int(record.get("event_id", 0)) == event_id
+                record
+                for record in load_index()
+                if int(record.get("event_id", 0)) == event_id
             ]
 
         for record in event_records:
@@ -134,10 +155,8 @@ def search_faces():
         ]
         matches.sort(key=lambda item: item["similarity"], reverse=True)
         return jsonify({"matches": matches, "threshold": threshold})
-    except ValueError:
-        return jsonify({"message": "ค่าความเหมือนไม่ถูกต้อง"}), 400
     except Exception as exc:
-        return jsonify({"message": f"ค้นหาใบหน้าไม่สำเร็จ: {exc}"}), 422
+        return jsonify({"message": f"ไม่พบใบหน้าที่ชัดเจนหรือค้นหาไม่สำเร็จ: {exc}"}), 422
     finally:
         if temporary_path:
             try:
