@@ -53,12 +53,16 @@ while (true) {
 
     try {
         $events = db()->query('SELECT * FROM events WHERE is_active = 1 ORDER BY id')->fetchAll();
+        $faceReady = face_health();
+        if (!$faceReady) {
+            auto_sync_log('Face Service ยังไม่พร้อม: จะซิงก์ไฟล์ก่อนและทำดัชนีเมื่อบริการพร้อม');
+        }
 
         foreach ($events as $event) {
             $eventId = (int) $event['id'];
             $title = (string) $event['title'];
             try {
-                $result = sync_event_folder($event, true);
+                $result = sync_event_folder($event, $faceReady);
                 $cycleResults[] = [
                     'event_id' => $eventId,
                     'title' => $title,
