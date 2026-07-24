@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../includes/face_service.php';
+require_once __DIR__ . '/../includes/local_sync.php';
 
 $user = require_login();
 $stats = [
@@ -30,6 +31,8 @@ foreach ($eventFolders as $folder) {
 }
 
 $face = face_health();
+$autoSyncStatus = read_auto_sync_status();
+$autoSyncRunning = auto_sync_is_running($autoSyncStatus);
 page_header('Dashboard', true);
 require __DIR__ . '/_nav.php';
 ?>
@@ -54,7 +57,18 @@ require __DIR__ . '/_nav.php';
     <div class="card">
         <div class="card-body">
             <h3>Face Service</h3>
-            <p><?= $face ? 'พร้อมใช้งาน' : 'ไม่พร้อมใช้งาน' ?></p>
+            <p><?= $face ? '✅ พร้อมใช้งาน' : '❌ ไม่พร้อมใช้งาน' ?></p>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h3>Auto Sync</h3>
+            <p><?= $autoSyncRunning ? '✅ กำลังทำงาน' : '❌ ยังไม่ได้เปิด' ?></p>
+            <?php if ($autoSyncRunning): ?>
+                <small>ตรวจล่าสุด <?= e((string) ($autoSyncStatus['last_check'] ?? '-')) ?></small>
+            <?php else: ?>
+                <small>เปิดด้วย START_AUTO_SYNC.bat หรือ START_SWK_PHONTO.bat</small>
+            <?php endif; ?>
         </div>
     </div>
 </div>
