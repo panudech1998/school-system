@@ -1,20 +1,31 @@
 @echo off
-chcp 65001 >nul
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
-title เริ่มระบบ SWK_Phonto
+title SWK_Phonto Launcher
 
-echo กำลังเปิด Face Service...
+if not exist "%~dp0START_FACE_SERVICE.bat" (
+  echo Missing START_FACE_SERVICE.bat
+  pause
+  exit /b 1
+)
+
+if not exist "%~dp0START_AUTO_SYNC.bat" (
+  echo Missing START_AUTO_SYNC.bat
+  pause
+  exit /b 1
+)
+
+echo Starting Face Service...
 start "SWK_Phonto Face Service" cmd /k call "%~dp0START_FACE_SERVICE.bat"
 
-echo รอ Face Service เริ่มทำงาน...
+echo Waiting for Face Service...
 timeout /t 10 /nobreak >nul
 
-echo กำลังเปิด Auto Sync...
+echo Starting Auto Sync...
 start "SWK_Phonto Auto Sync" cmd /k call "%~dp0START_AUTO_SYNC.bat"
 
 timeout /t 2 /nobreak >nul
 start "" "http://localhost/SWK_Phonto/admin/"
 
-echo เปิดระบบเรียบร้อยแล้ว
+echo SWK_Phonto started.
 exit /b 0
