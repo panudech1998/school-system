@@ -18,7 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    verify_csrf();
+    $csrf = (string) ($_POST['csrf'] ?? '');
+    if ($csrf === '' || !hash_equals($_SESSION['csrf'] ?? '', $csrf)) {
+        fail_json('เซสชันหมดอายุ กรุณาเปิดหน้าค้นหาใหม่', 419);
+    }
     if (($_POST['consent'] ?? '') !== '1') {
         fail_json('กรุณายอมรับการประมวลผลใบหน้า');
     }
@@ -58,19 +61,22 @@ try {
     ]);
     $body = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $error = curl_error($ch);
+    $curlError = curl_error($ch);
     curl_close($ch);
     if ($body === false || $status >= 400) {
-        fail_json('บริการค้นหาใบหน้าไม่พร้อมใช้งาน: ' . ($error ?: $body), 503);
+        $serviceError = is_string($body) ? json_decode($body, true) : null;
+        $serviceMessage = is_array($serviceError) ? (string) ($serviceError['message'] ?? '') : '';
+        fail_json($serviceMessage ?: ('บริการค้นหาใบหน้าไม่พร้อมใช้งาน: ' . ($curlError ?: 'HTTP ' . $status)), 503);
     }
 
     $matchData = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
     $matches = $matchData['matches'] ?? [];
+    $threshold = (float) $event['face_threshold'];
     $similarities = [];
     foreach ($matches as $match) {
         $photoId = (int) ($match['photo_id'] ?? 0);
         $similarity = (float) ($match['similarity'] ?? 0);
-        if ($photoId > 0 && $similarity >= (float) $event['face_threshold']) {
+        if ($photoId > 0 && $similarity >= $threshold) {
             $similarities[$photoId] = max($similarities[$photoId] ?? 0, $similarity);
         }
     }
@@ -80,15 +86,19 @@ try {
         $ids = array_keys($similarities);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $params = array_merge([(int) $event['id']], $ids);
-        $stmt = db()->prepare("SELECT id, file_name, local_path FROM photos WHERE event_id = ? AND is_visible = 1 AND id IN ($placeholders)");
+        $stmt = db()->prepare("SELECT id, file_name, local_path FROM photos WHERE event_id = ? AND is_visible = 1 AND face_indexed = 1 AND id IN ($placeholders)");
         $stmt->execute($params);
         foreach ($stmt->fetchAll() as $photo) {
+            $photoId = (int) $photo['id'];
+            if (($similarities[$photoId] ?? 0) < $threshold) {
+                continue;
+            }
             $results[] = [
-                'id' => (int) $photo['id'],
+                'id' => $photoId,
                 'file_name' => $photo['file_name'],
-                'similarity' => $similarities[(int) $photo['id']],
+                'similarity' => $similarities[$photoId],
                 'image_url' => url($photo['local_path']),
-                'download_url' => url('download.php?id=' . $photo['id']),
+                'download_url' => absolute_url('download.php?id=' . $photoId),
             ];
         }
         usort($results, fn(array $a, array $b): int => $b['similarity'] <=> $a['similarity']);
@@ -98,7 +108,7 @@ try {
     $log->execute([
         $event['id'],
         count($results),
-        $event['face_threshold'],
+        $threshold,
         hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . session_id()),
     ]);
 
