@@ -164,20 +164,24 @@ function sync_event_folder(array $event, bool $indexFaces = true): array
             $result['updated']++;
         }
 
-        $needsIndex = $needsCopy || !$existing || !(int) ($existing['face_indexed'] ?? 0);
+        $needsIndex = $needsCopy || !$existing || (int) ($existing['face_indexed'] ?? 0) === 0;
         if ($indexFaces && $needsIndex) {
             try {
                 $indexResult = face_index_photo($eventId, $photoId, $absolutePath);
                 $faces = (int) ($indexResult['faces'] ?? 0);
-                $indexStatusStatement->execute([$faces > 0 ? 1 : 0, $photoId]);
+                $indexStatusStatement->execute([$faces > 0 ? 1 : 2, $photoId]);
                 if ($faces > 0) {
                     $result['indexed']++;
                 } else {
                     $result['failed'][] = 'ไม่พบใบหน้า: ' . basename($realSource);
                 }
             } catch (Throwable $exception) {
-                $indexStatusStatement->execute([0, $photoId]);
-                $result['failed'][] = 'ทำดัชนีไม่สำเร็จ: ' . basename($realSource) . ' — ' . $exception->getMessage();
+                $message = $exception->getMessage();
+                $noFace = str_contains($message, 'ไม่พบใบหน้า');
+                $indexStatusStatement->execute([$noFace ? 2 : 0, $photoId]);
+                $result['failed'][] = ($noFace ? 'ไม่พบใบหน้า: ' : 'ทำดัชนีไม่สำเร็จ: ')
+                    . basename($realSource)
+                    . ($noFace ? '' : ' — ' . $message);
             }
         } elseif (!$needsCopy) {
             $result['unchanged']++;
