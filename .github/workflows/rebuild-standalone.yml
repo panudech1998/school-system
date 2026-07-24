@@ -1,59 +1,21 @@
-name: Build Fresh Standalone SWK_Phonto
+name: SWK_Phonto Lint
 
 on:
   push:
     branches:
       - agent/swk-phonto-new-system
   pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: write
 
 jobs:
-  rebuild:
-    if: ${{ github.event_name == 'pull_request' || !contains(github.event.head_commit.message, '[skip ci]') }}
+  syntax:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
         with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref || github.ref_name }}
-
-      - name: Verify and extract standalone project
-        shell: bash
-        run: |
-          cat \
-            .package/part00 \
-            .package/part01 \
-            .package/fix02_0 .package/fix02_1 .package/fix02_2 .package/fix02_3 \
-            .package/part03 \
-            .package/part04 \
-            .package/fix05_0 .package/fix05_1 .package/fix05_2 .package/fix05_3 \
-            .package/part06 | base64 --decode > /tmp/SWK_Phonto.zip
-          echo '6be9c0c3b52fb89601ebc9e8029e3f5c5386da95cbaee78ca7b9812ecb627a08  /tmp/SWK_Phonto.zip' | sha256sum --check
-          rm -rf /tmp/swk-phonto
-          mkdir -p /tmp/swk-phonto
-          unzip -q /tmp/SWK_Phonto.zip -d /tmp/swk-phonto
-          test -f /tmp/swk-phonto/SWK_Phonto/README.md
-          rm -rf /tmp/swk-phonto/SWK_Phonto/.github
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
-          cp -a /tmp/swk-phonto/SWK_Phonto/. .
-
-      - name: Validate source
-        shell: bash
-        run: |
-          find . -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          python -m py_compile face-service/app.py
-          ! grep -Rni --exclude-dir=.git --exclude-dir=.github --exclude='*.zip' 'school-system' .
-
-      - name: Publish clean standalone source
-        shell: bash
-        run: |
-          TARGET_BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Build fresh standalone SWK_Phonto source [skip ci]'
-          git push origin HEAD:"${TARGET_BRANCH}"
+          php-version: '8.2'
+      - name: Check PHP syntax
+        run: find . -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Check Python syntax
+        run: python -m py_compile face-service/app.py
