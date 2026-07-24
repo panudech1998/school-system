@@ -5,6 +5,9 @@ face-service/data/*.json
 storage/photos/*
 !storage/photos/.htaccess
 !storage/photos/.gitkeep
+storage/auto-sync-status.json
+storage/auto-sync.lock
+storage/auto-sync.log
 *.log
 .DS_Store
 Thumbs.db
