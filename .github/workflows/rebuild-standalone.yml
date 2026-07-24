@@ -1,0 +1,50 @@
+name: Build Fresh Standalone SWK_Phonto
+
+on:
+  push:
+    branches:
+      - agent/swk-phonto-new-system
+    paths:
+      - '.package/**'
+      - '.github/workflows/rebuild-standalone.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify and extract standalone project
+        shell: bash
+        run: |
+          cat .package/part* | base64 --decode > /tmp/SWK_Phonto.zip
+          echo '6be9c0c3b52fb89601ebc9e8029e3f5c5386da95cbaee78ca7b9812ecb627a08  /tmp/SWK_Phonto.zip' | sha256sum --check
+          rm -rf /tmp/swk-phonto
+          mkdir -p /tmp/swk-phonto
+          unzip -q /tmp/SWK_Phonto.zip -d /tmp/swk-phonto
+          test -f /tmp/swk-phonto/SWK_Phonto/README.md
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/swk-phonto/SWK_Phonto/. .
+
+      - name: Validate source
+        shell: bash
+        run: |
+          find . -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          python -m py_compile face-service/app.py
+          ! grep -Rni --exclude-dir=.git --exclude='*.zip' 'school-system' .
+
+      - name: Publish clean standalone source
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Build fresh standalone SWK_Phonto source [skip ci]'
+          git push origin HEAD:${GITHUB_REF_NAME}
