@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import json
 import os
 import tempfile
 import threading
 from pathlib import Path
 from typing import Any
+
+import cv2
 import numpy as np
 from deepface import DeepFace
 from flask import Flask, jsonify, request
@@ -20,8 +23,22 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 app.config["JSON_AS_ASCII"] = False
 lock = threading.Lock()
 
+
+def opencv_cascade_path() -> Path:
+    return Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
+
+
+def validate_detector() -> None:
+    if DETECTOR == "opencv" and not opencv_cascade_path().is_file():
+        raise RuntimeError(
+            "OpenCV ติดตั้งไม่สมบูรณ์: ไม่พบ haarcascade_frontalface_default.xml "
+            "กรุณาปิดหน้าต่างนี้แล้วเปิด START_FACE_SERVICE.bat เพื่อซ่อมอัตโนมัติ"
+        )
+
+
 def authorized() -> bool:
     return request.headers.get("X-Service-Token", "") == SERVICE_TOKEN
+
 
 def load_index() -> list[dict[str, Any]]:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -33,15 +50,28 @@ def load_index() -> list[dict[str, Any]]:
     except (OSError, json.JSONDecodeError):
         return []
 
+
 def save_index(records: list[dict[str, Any]]) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     temp = INDEX_FILE.with_suffix(".tmp")
     temp.write_text(json.dumps(records, ensure_ascii=False), encoding="utf-8")
     temp.replace(INDEX_FILE)
 
+
 def embeddings(path: str) -> list[list[float]]:
-    faces = DeepFace.represent(img_path=path, model_name=MODEL_NAME, detector_backend=DETECTOR, enforce_detection=True, align=True)
-    return [[float(v) for v in face.get("embedding", [])] for face in faces if isinstance(face.get("embedding"), list) and face.get("embedding")]
+    faces = DeepFace.represent(
+        img_path=path,
+        model_name=MODEL_NAME,
+        detector_backend=DETECTOR,
+        enforce_detection=True,
+        align=True,
+    )
+    return [
+        [float(value) for value in face.get("embedding", [])]
+        for face in faces
+        if isinstance(face.get("embedding"), list) and face.get("embedding")
+    ]
+
 
 def similarity(left: list[float], right: list[float]) -> float:
     a = np.asarray(left, dtype=np.float32)
@@ -51,11 +81,22 @@ def similarity(left: list[float], right: list[float]) -> float:
     denominator = float(np.linalg.norm(a) * np.linalg.norm(b))
     return 0.0 if denominator == 0 else float(np.dot(a, b) / denominator)
 
+
 @app.get("/health")
 def health():
     with lock:
         count = len(load_index())
-    return jsonify({"status": "ok", "model": MODEL_NAME, "indexed_faces": count})
+    return jsonify(
+        {
+            "status": "ok",
+            "model": MODEL_NAME,
+            "detector": DETECTOR,
+            "opencv": cv2.__version__,
+            "cascade_ready": opencv_cascade_path().is_file(),
+            "indexed_faces": count,
+        }
+    )
+
 
 @app.post("/index")
 def index_photo():
@@ -76,9 +117,13 @@ def index_photo():
         return jsonify({"message": f"ไม่พบใบหน้าหรือประมวลผลไม่สำเร็จ: {exc}"}), 422
     with lock:
         records = [record for record in load_index() if int(record.get("photo_id", 0)) != photo_id]
-        records.extend({"event_id": event_id, "photo_id": photo_id, "embedding": item} for item in items)
+        records.extend(
+            {"event_id": event_id, "photo_id": photo_id, "embedding": item}
+            for item in items
+        )
         save_index(records)
     return jsonify({"photo_id": photo_id, "faces": len(items)})
+
 
 @app.post("/search")
 def search():
@@ -104,14 +149,21 @@ def search():
         if len(query) != 1:
             return jsonify({"message": "กรุณาใช้รูปที่มีใบหน้าผู้ค้นหาเพียงคนเดียว"}), 422
         with lock:
-            records = [record for record in load_index() if int(record.get("event_id", 0)) == event_id]
+            records = [
+                record
+                for record in load_index()
+                if int(record.get("event_id", 0)) == event_id
+            ]
         best: dict[int, float] = {}
         for record in records:
             score = similarity(query[0], record.get("embedding", []))
             photo_id = int(record.get("photo_id", 0))
             if photo_id > 0 and score >= threshold:
                 best[photo_id] = max(best.get(photo_id, 0.0), score)
-        matches = [{"photo_id": photo_id, "similarity": round(score, 6)} for photo_id, score in best.items()]
+        matches = [
+            {"photo_id": photo_id, "similarity": round(score, 6)}
+            for photo_id, score in best.items()
+        ]
         matches.sort(key=lambda item: item["similarity"], reverse=True)
         return jsonify({"matches": matches, "threshold": threshold})
     except Exception as exc:
@@ -123,5 +175,7 @@ def search():
             except OSError:
                 pass
 
+
 if __name__ == "__main__":
+    validate_detector()
     app.run(host="127.0.0.1", port=5055, debug=False)
