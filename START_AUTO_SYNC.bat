@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
 title SWK_Phonto Auto Sync
@@ -11,7 +10,16 @@ if not exist "%PHP_EXE%" (
 )
 
 if not exist "%PHP_EXE%" (
-  echo ไม่พบ PHP กรุณาตรวจสอบว่าติดตั้ง XAMPP ที่ C:\xampp
+  echo PHP was not found.
+  echo Expected location: C:\xampp\php\php.exe
+  echo Install XAMPP or update PHP_EXE in START_AUTO_SYNC.bat.
+  pause
+  exit /b 1
+)
+
+if not exist "%~dp0scripts\auto-sync.php" (
+  echo Auto Sync script was not found.
+  echo Missing: %~dp0scripts\auto-sync.php
   pause
   exit /b 1
 )
@@ -20,14 +28,13 @@ echo ============================================
 echo   SWK_Phonto - Auto Sync
 echo ============================================
 echo.
-echo ระบบจะตรวจโฟลเดอร์ทุก 15 วินาที
-echo เมื่อพบรูปใหม่หรือรูปที่แก้ไข จะซิงก์และทำดัชนีอัตโนมัติ
-echo ห้ามปิดหน้าต่างนี้ขณะต้องการใช้ Auto Sync
-echo กด Ctrl+C เพื่อหยุด
+echo Monitoring active event folders every 15 seconds.
+echo New and modified images will be synced and indexed automatically.
+echo Keep this window open. Press Ctrl+C to stop.
 echo.
 
 "%PHP_EXE%" "%~dp0scripts\auto-sync.php" 15
 
 echo.
-echo Auto Sync หยุดทำงานแล้ว
+echo Auto Sync has stopped.
 pause
