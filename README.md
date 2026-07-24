@@ -19,11 +19,12 @@
 1. วางโฟลเดอร์ที่ `C:\xampp\htdocs\SWK_Phonto`
 2. เปิด Apache และ MySQL
 3. Import `database/swk_phonto.sql` ผ่าน phpMyAdmin
-4. ตรวจฐานข้อมูลและแก้ Google OAuth ที่ `config/app.php`
-5. ตั้ง Authorized redirect URI เป็น `http://localhost/SWK_Phonto/admin/google-drive.php`
-6. ติดตั้ง Python 3.10 หรือ 3.11 แล้วเปิด `face-service\start.bat`
-7. เปิด `http://localhost/SWK_Phonto/`
-8. เข้าหลังบ้านที่ `http://localhost/SWK_Phonto/login.php`
+4. ตรวจค่าฐานข้อมูลใน `config/app.php`
+5. เข้าเมนูหลังบ้าน > Google Drive แล้วกรอก Client ID และ Client Secret จากหน้าเว็บ
+6. ตั้ง Authorized redirect URI ใน Google Cloud เป็น `http://localhost/SWK_Phonto/admin/google-drive.php`
+7. ติดตั้ง Python 3.10 หรือ 3.11 แล้วเปิด `face-service\start.bat`
+8. เปิด `http://localhost/SWK_Phonto/`
+9. เข้าหลังบ้านที่ `http://localhost/SWK_Phonto/login.php`
 
 บัญชีเริ่มต้น: `admin@swk.local` / `12345678`
 
@@ -32,7 +33,7 @@
 ## การใช้งาน
 
 1. เชื่อม Google Drive ในหลังบ้าน
-2. เพิ่มกิจกรรมและวาง Folder ID
+2. เพิ่มกิจกรรมแล้ววาง Folder ID หรือลิงก์โฟลเดอร์ Google Drive ระบบจะแยก ID ให้อัตโนมัติ
 3. กดซิงก์เพื่อดาวน์โหลดแคชและทำดัชนีใบหน้า
 4. เปิดหน้า QR ของกิจกรรมเพื่อพิมพ์
 5. ผู้ใช้สแกน QR ถ่ายรูป และรับเฉพาะรูปที่ใบหน้าผ่านเกณฑ์
