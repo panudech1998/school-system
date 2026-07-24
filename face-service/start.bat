@@ -12,7 +12,7 @@ echo.
 set "PYTHON_CMD="
 set "PYTHON_LABEL="
 
-echo [1/4] ตรวจสอบ Python ที่รองรับ...
+echo [1/5] ตรวจสอบ Python ที่รองรับ...
 
 py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3,11) else 1)" >nul 2>nul
 if not errorlevel 1 (
@@ -88,26 +88,38 @@ echo พบ !PYTHON_LABEL!
 !PYTHON_CMD! --version
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [2/4] สร้างสภาพแวดล้อม Python ครั้งแรก...
+  echo [2/5] สร้างสภาพแวดล้อม Python ครั้งแรก...
   !PYTHON_CMD! -m venv .venv
   if errorlevel 1 goto :failed
 ) else (
-  echo [2/4] พบสภาพแวดล้อม Python แล้ว
+  echo [2/5] พบสภาพแวดล้อม Python แล้ว
 )
 
 call ".venv\Scripts\activate.bat"
 if errorlevel 1 goto :failed
 
-echo [3/4] ตรวจสอบและติดตั้งส่วนประกอบ...
+echo [3/5] ตรวจสอบและติดตั้งส่วนประกอบ...
 python -m pip install --disable-pip-version-check --upgrade pip
 if errorlevel 1 goto :failed
 python -m pip install --disable-pip-version-check -r requirements.txt
 if errorlevel 1 goto :failed
 
+echo [4/5] ตรวจสอบไฟล์ตรวจจับใบหน้าของ OpenCV...
+python -c "import cv2, pathlib; p=pathlib.Path(cv2.data.haarcascades)/'haarcascade_frontalface_default.xml'; print('OpenCV:', cv2.__version__); print('Cascade:', p); raise SystemExit(0 if p.is_file() else 1)"
+if errorlevel 1 (
+  echo.
+  echo พบว่า OpenCV ติดตั้งไม่สมบูรณ์ กำลังซ่อมอัตโนมัติ...
+  python -m pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless >nul 2>nul
+  python -m pip install --no-cache-dir --force-reinstall opencv-python==4.10.0.84
+  if errorlevel 1 goto :opencv_failed
+  python -c "import cv2, pathlib; p=pathlib.Path(cv2.data.haarcascades)/'haarcascade_frontalface_default.xml'; print('OpenCV:', cv2.__version__); print('Cascade:', p); raise SystemExit(0 if p.is_file() else 1)"
+  if errorlevel 1 goto :opencv_failed
+)
+
 set "FACE_SERVICE_TOKEN=change-this-face-service-token"
 set "PYTHONUTF8=1"
 
-echo [4/4] กำลังเปิด Face Service ที่ http://127.0.0.1:5055
+echo [5/5] กำลังเปิด Face Service ที่ http://127.0.0.1:5055
 echo.
 echo ห้ามปิดหน้าต่างนี้ขณะใช้งานระบบค้นหาใบหน้า
 echo เมื่อเห็นข้อความ Running on http://127.0.0.1:5055 แสดงว่าพร้อมใช้งาน
@@ -123,13 +135,19 @@ exit /b 0
 :python_missing
 echo.
 echo กรุณาติดตั้ง Python 3.11 จาก python.org
- echo ระหว่างติดตั้งให้เลือก Add python.exe to PATH และ Install launcher for all users
+echo ระหว่างติดตั้งให้เลือก Add python.exe to PATH และ Install launcher for all users
 pause
 exit /b 1
 
 :install_failed
 echo.
 echo ติดตั้ง Python อัตโนมัติไม่สำเร็จ กรุณาติดตั้ง Python 3.11 ด้วยตนเอง
+pause
+exit /b 1
+
+:opencv_failed
+echo.
+echo ซ่อม OpenCV ไม่สำเร็จ กรุณาลบโฟลเดอร์ face-service\.venv แล้วเปิด START_FACE_SERVICE.bat ใหม่
 pause
 exit /b 1
 
