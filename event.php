@@ -16,12 +16,13 @@ if (!$event) {
 $stmt = db()->prepare('SELECT * FROM photos WHERE event_id = ? AND is_visible = 1 ORDER BY id DESC');
 $stmt->execute([$event['id']]);
 $photos = $stmt->fetchAll();
-$findUrl = url('find.php?event=' . $event['id']);
+$findPath = 'find.php?event=' . $event['id'];
+$findUrl = absolute_url($findPath);
 
 page_header($event['title']);
 ?>
 <div class="actions">
-    <a class="btn" href="<?= e($findUrl) ?>">ค้นหารูปของฉัน</a>
+    <a class="btn" href="<?= e(url($findPath)) ?>">ค้นหารูปของฉัน</a>
     <a class="btn secondary" href="<?= e(url()) ?>">กลับหน้าหลัก</a>
 </div>
 <h1><?= e($event['title']) ?></h1>
@@ -29,13 +30,14 @@ page_header($event['title']);
 <div class="card" style="max-width:220px;margin-bottom:24px"><div class="card-body"><strong>QR ค้นหาด้วยใบหน้า</strong><div class="qr" data-qr="<?= e($findUrl) ?>"></div></div></div>
 <div class="photo-grid">
 <?php foreach ($photos as $photo): ?>
+    <?php $downloadPath = 'download.php?id=' . $photo['id']; ?>
     <article class="photo">
         <img loading="lazy" src="<?= e(url($photo['local_path'])) ?>" alt="<?= e($photo['file_name']) ?>">
         <div class="meta">
             <strong><?= e($photo['file_name']) ?></strong>
             <?php if ((int) $event['allow_download'] === 1): ?>
-                <p><a class="btn" href="<?= e(url('download.php?id=' . $photo['id'])) ?>">ดาวน์โหลด</a></p>
-                <div class="qr" data-qr="<?= e(url('download.php?id=' . $photo['id'])) ?>"></div>
+                <p><a class="btn" href="<?= e(url($downloadPath)) ?>">ดาวน์โหลด</a></p>
+                <div class="qr" data-qr="<?= e(absolute_url($downloadPath)) ?>"></div>
             <?php endif; ?>
         </div>
     </article>
