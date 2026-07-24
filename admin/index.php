@@ -1,3 +1,61 @@
 <?php
 
-declare(strict_types=1);require_once __DIR__.'/../includes/layout.php';require_once __DIR__.'/../includes/face_service.php';$user=require_login();$stats=['events'=>(int)db()->query('SELECT COUNT(*) FROM events')->fetchColumn(),'photos'=>(int)db()->query('SELECT COUNT(*) FROM photos')->fetchColumn(),'indexed'=>(int)db()->query('SELECT COUNT(*) FROM photos WHERE face_indexed=1')->fetchColumn(),'searches'=>(int)db()->query('SELECT COUNT(*) FROM face_search_logs')->fetchColumn(),'downloads'=>(int)db()->query('SELECT COUNT(*) FROM download_logs')->fetchColumn()];$labels=['events'=>'กิจกรรม','photos'=>'รูปทั้งหมด','indexed'=>'ทำดัชนีแล้ว','searches'=>'การค้นหา','downloads'=>'ดาวน์โหลด'];$drive=(bool)db()->query('SELECT COUNT(*) FROM drive_connections WHERE id=1')->fetchColumn();$face=face_health();page_header('Dashboard',true);require __DIR__.'/_nav.php';?><h1>Dashboard</h1><p>ยินดีต้อนรับ <?=e($user['name'])?></p><div class="stats"><?php foreach($stats as $k=>$v):?><div class="stat"><span><?=e($labels[$k])?></span><strong><?=number_format($v)?></strong></div><?php endforeach?></div><h2>สถานะระบบ</h2><div class="grid"><div class="card"><div class="card-body"><h3>Google Drive</h3><p><?=$drive?'เชื่อมต่อแล้ว':'ยังไม่ได้เชื่อมต่อ'?></p></div></div><div class="card"><div class="card-body"><h3>Face Service</h3><p><?=$face?'พร้อมใช้งาน':'ไม่พร้อมใช้งาน'?></p></div></div></div><?php page_footer();?>
+declare(strict_types=1);
+
+require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/../includes/face_service.php';
+
+$user = require_login();
+$stats = [
+    'events' => (int) db()->query('SELECT COUNT(*) FROM events')->fetchColumn(),
+    'photos' => (int) db()->query('SELECT COUNT(*) FROM photos')->fetchColumn(),
+    'indexed' => (int) db()->query('SELECT COUNT(*) FROM photos WHERE face_indexed=1')->fetchColumn(),
+    'searches' => (int) db()->query('SELECT COUNT(*) FROM face_search_logs')->fetchColumn(),
+    'downloads' => (int) db()->query('SELECT COUNT(*) FROM download_logs')->fetchColumn(),
+];
+$labels = [
+    'events' => 'กิจกรรม',
+    'photos' => 'รูปทั้งหมด',
+    'indexed' => 'ทำดัชนีแล้ว',
+    'searches' => 'การค้นหา',
+    'downloads' => 'ดาวน์โหลด',
+];
+
+$eventFolders = db()->query('SELECT drive_folder_id FROM events')->fetchAll(PDO::FETCH_COLUMN);
+$readyFolders = 0;
+foreach ($eventFolders as $folder) {
+    if (is_dir((string) $folder) && is_readable((string) $folder)) {
+        $readyFolders++;
+    }
+}
+
+$face = face_health();
+page_header('Dashboard', true);
+require __DIR__ . '/_nav.php';
+?>
+<h1>Dashboard</h1>
+<p>ยินดีต้อนรับ <?= e($user['name']) ?></p>
+
+<div class="stats">
+    <?php foreach ($stats as $key => $value): ?>
+        <div class="stat"><span><?= e($labels[$key]) ?></span><strong><?= number_format($value) ?></strong></div>
+    <?php endforeach; ?>
+</div>
+
+<h2>สถานะระบบ</h2>
+<div class="grid">
+    <div class="card">
+        <div class="card-body">
+            <h3>โฟลเดอร์ Google Drive</h3>
+            <p>อ่านได้ <?= number_format($readyFolders) ?> จาก <?= number_format(count($eventFolders)) ?> กิจกรรม</p>
+            <small>ใช้ Google Drive for desktop โดยไม่ผ่าน Google Cloud</small>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h3>Face Service</h3>
+            <p><?= $face ? 'พร้อมใช้งาน' : 'ไม่พร้อมใช้งาน' ?></p>
+        </div>
+    </div>
+</div>
+<?php page_footer(); ?>
