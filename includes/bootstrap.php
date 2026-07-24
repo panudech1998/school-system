@@ -36,6 +36,14 @@ function url(string $path = ''): string
     return rtrim(BASE_URL, '/') . '/' . ltrim($path, '/');
 }
 
+function absolute_url(string $path = ''): string
+{
+    $forwardedProto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https' ? 'https' : 'http';
+    $host = preg_replace('/[^a-zA-Z0-9.\-:\[\]]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
+    return $scheme . '://' . $host . url($path);
+}
+
 function redirect(string $path): never
 {
     header('Location: ' . url($path));
