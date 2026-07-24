@@ -4,27 +4,20 @@
 
 ## เวอร์ชันไม่ใช้ Google Cloud
 
-ระบบอ่านรูปจากโฟลเดอร์ **Google Drive for desktop** ที่ซิงก์อยู่ในเครื่องเซิร์ฟเวอร์โดยตรง จึงไม่ต้องใช้:
-
-- Google Cloud Console
-- Google Drive API
-- OAuth
-- Client ID
-- Client Secret
-- Authorized redirect URI
+ระบบอ่านรูปจากโฟลเดอร์ **Google Drive for desktop** ที่ซิงก์อยู่ในเครื่องเซิร์ฟเวอร์โดยตรง จึงไม่ต้องใช้ Google Cloud Console, Drive API, OAuth, Client ID, Client Secret หรือ Redirect URI
 
 ## ความสามารถ
 
 - หน้าแรกและอัลบั้มกิจกรรม
-- เลือกโฟลเดอร์รูปจาก Google Drive for desktop
-- อ่านรูปจากโฟลเดอร์และโฟลเดอร์ย่อย
-- ซิงก์เฉพาะรูปใหม่หรือรูปที่แก้ไข
+- อ่านรูปจากโฟลเดอร์ Google Drive for desktop และโฟลเดอร์ย่อย
+- Auto Sync ตรวจรูปใหม่หรือรูปที่แก้ไขทุก 15 วินาที
+- ซ่อนรูปบนเว็บไซต์อัตโนมัติเมื่อรูปถูกนำออกจากโฟลเดอร์
+- ทำดัชนีใบหน้าอัตโนมัติเมื่อ Face Service พร้อม
 - QR เข้าหน้าค้นหาและ QR ดาวน์โหลดแต่ละรูป
 - ถ่ายรูปหรืออัปโหลดเซลฟีจากโทรศัพท์
 - ตรวจใบหน้าในรูปเดี่ยวและรูปหมู่
 - แสดงเฉพาะรูปในกิจกรรมเดียวกันที่ผ่าน threshold
 - หลังบ้านจัดการกิจกรรม รูป ผู้ใช้ การตั้งค่า และประวัติ
-- ซ่อนรูปและสั่งทำดัชนีใหม่
 - เซลฟีถูกลบหลังประมวลผล
 
 ## ติดตั้งบน XAMPP
@@ -32,9 +25,11 @@
 1. วางโฟลเดอร์ที่ `C:\xampp\htdocs\SWK_Phonto`
 2. เปิด Apache และ MySQL
 3. Import `database/swk_phonto.sql` ผ่าน phpMyAdmin
-4. ติดตั้ง Python 3.10 หรือ 3.11 แล้วเปิด `face-service\start.bat`
-5. เปิด `http://localhost/SWK_Phonto/`
-6. เข้าหลังบ้านที่ `http://localhost/SWK_Phonto/login.php`
+4. ติดตั้ง Google Drive for desktop และตั้งโฟลเดอร์รูปเป็น Mirror หรือ Available offline
+5. ติดตั้ง Python 3.10–3.12
+6. เปิดระบบด้วย `START_SWK_PHONTO.bat`
+7. เข้า `http://localhost/SWK_Phonto/`
+8. เข้าหลังบ้านที่ `http://localhost/SWK_Phonto/login.php`
 
 บัญชีเริ่มต้น:
 
@@ -45,30 +40,66 @@ admin@swk.local
 
 ควรเปลี่ยนรหัสผ่านและ `FACE_SERVICE_TOKEN` ก่อนใช้งานจริง
 
-## เตรียม Google Drive โดยไม่ใช้ Google Cloud
+## เตรียมโฟลเดอร์ Google Drive
 
-1. ติดตั้ง Google Drive for desktop บนเครื่องเดียวกับ XAMPP
-2. ลงชื่อเข้าใช้บัญชี Google
-3. เลือกโหมด Mirror files หรือกำหนดโฟลเดอร์รูปให้ Available offline
-4. เปิด File Explorer แล้วเข้าโฟลเดอร์รูป
-5. คัดลอกตำแหน่ง เช่น:
+1. ลงชื่อเข้าใช้ Google Drive for desktop บนเครื่องเดียวกับ XAMPP
+2. เปิด File Explorer แล้วเข้าโฟลเดอร์รูป
+3. คัดลอกตำแหน่ง เช่น:
 
 ```text
 G:\My Drive\งานปัจฉิม 2569
 ```
 
-6. เข้า SWK_Phonto > หลังบ้าน > กิจกรรม
-7. วางตำแหน่งในช่อง “ตำแหน่งโฟลเดอร์รูปจาก Google Drive for desktop”
-8. บันทึกแล้วกดซิงก์
+4. เข้า SWK_Phonto > หลังบ้าน > กิจกรรม
+5. วางตำแหน่งในช่องโฟลเดอร์รูป
+6. บันทึกกิจกรรม
 
 ระบบจะคัดลอกรูปที่จำเป็นมาไว้ใน `storage/photos/{event_id}` เพื่อแสดงผล ดาวน์โหลด และทำดัชนีใบหน้า
 
-## การเพิ่มรูปภายหลัง
+## Auto Sync
+
+วิธีเปิดที่แนะนำคือดับเบิลคลิก:
+
+```text
+START_SWK_PHONTO.bat
+```
+
+ไฟล์นี้จะเปิดทั้ง:
+
+- Face Service สำหรับตรวจและค้นหาใบหน้า
+- Auto Sync สำหรับตรวจโฟลเดอร์ทุก 15 วินาที
+- หน้า Dashboard ของระบบ
+
+สามารถเปิดเฉพาะ Auto Sync ได้ด้วย:
+
+```text
+START_AUTO_SYNC.bat
+```
+
+เมื่อ Auto Sync ทำงาน:
 
 1. เพิ่มรูปลงในโฟลเดอร์ Google Drive ตามปกติ
-2. รอให้ Google Drive for desktop ซิงก์เสร็จ
-3. เข้าเมนูกิจกรรม > ซิงก์
-4. กด “เริ่มซิงก์และทำดัชนี”
+2. รอ Google Drive for desktop ดาวน์โหลดไฟล์ลงเครื่อง
+3. ภายในประมาณ 15 วินาที ระบบจะคัดลอกรูปใหม่เข้าหน้าเว็บไซต์
+4. หาก Face Service พร้อม ระบบจะทำดัชนีใบหน้าให้อัตโนมัติ
+5. ถ้า Face Service ยังไม่พร้อม ระบบจะเก็บรูปไว้ก่อนและกลับมาทำดัชนีเมื่อบริการพร้อม
+
+ห้ามปิดหน้าต่าง Auto Sync หากต้องการให้ระบบตรวจรูปต่อเนื่อง
+
+## ตรวจสถานะ
+
+หน้า Dashboard และหน้าซิงก์ของแต่ละกิจกรรมจะแสดงสถานะ:
+
+- โฟลเดอร์ Google Drive
+- Face Service
+- Auto Sync
+- เวลาที่ตรวจโฟลเดอร์ล่าสุด
+
+Log ของ Auto Sync อยู่ที่:
+
+```text
+storage\auto-sync.log
+```
 
 ## QR บนโทรศัพท์
 
@@ -82,7 +113,8 @@ http://192.168.1.20/SWK_Phonto/
 
 ## หมายเหตุ
 
-- Apache ต้องมีสิทธิ์อ่านโฟลเดอร์ Google Drive for desktop
-- หากใช้โหมด Stream files ควรเลือก Available offline สำหรับโฟลเดอร์รูป
-- เว็บเบราว์เซอร์ไม่สามารถเลือกโฟลเดอร์บนเครื่องเซิร์ฟเวอร์ให้ PHP โดยตรงได้ จึงต้องคัดลอกตำแหน่งโฟลเดอร์มาวางหนึ่งครั้งต่อกิจกรรม
+- Apache และ PHP CLI ต้องมีสิทธิ์อ่านโฟลเดอร์ Google Drive for desktop
+- หากใช้ Stream files ควรตั้งโฟลเดอร์รูปเป็น Available offline
+- Auto Sync ทำงานเฉพาะกิจกรรมที่เปิดสถานะ “แสดงกิจกรรม”
+- รูปที่ไม่มีใบหน้าจะถูกตรวจครั้งเดียวและไม่ประมวลผลซ้ำทุก 15 วินาที
 - การรู้จำใบหน้าไม่แม่นยำ 100% ควรทดสอบกับรูปจริงและเพิ่ม threshold หากมีผลผิดคน
