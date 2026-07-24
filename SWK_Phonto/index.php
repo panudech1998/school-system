@@ -1,0 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/includes/layout.php';
+
+$events = db()->query(
+    'SELECT e.*,
+        (SELECT p.local_path FROM photos p WHERE p.event_id = e.id AND p.is_visible = 1 ORDER BY p.id DESC LIMIT 1) AS cover_path,
+        (SELECT COUNT(*) FROM photos p WHERE p.event_id = e.id AND p.is_visible = 1) AS photo_count
+     FROM events e WHERE e.is_active = 1 ORDER BY e.event_date DESC, e.id DESC'
+)->fetchAll();
+
+$latestPhotos = db()->query(
+    'SELECT p.id, p.file_name, p.local_path, e.title AS event_title
+     FROM photos p JOIN events e ON e.id = p.event_id
+     WHERE p.is_visible = 1 AND e.is_active = 1 ORDER BY p.id DESC LIMIT 12'
+)->fetchAll();
+
+page_header('หน้าหลัก');
+?>
+<section class="hero">
+    <h1><?= e(setting('site_title', APP_NAME)) ?></h1>
+    <p><?= e(setting('welcome_text', 'ค้นหาและดาวน์โหลดภาพกิจกรรมของคุณ')) ?></p>
+    <p><?= e(setting('privacy_text', 'ระบบไม่เก็บภาพเซลฟีไว้ถาวร')) ?></p>
+</section>
+
+<h2>เลือกกิจกรรม</h2>
+<div class="grid">
+    <?php foreach ($events as $event): ?>
+        <article class="card">
+            <?php if ($event['cover_path']): ?>
+                <img src="<?= e(url($event['cover_path'])) ?>" alt="<?= e($event['title']) ?>">
+            <?php endif; ?>
+            <div class="card-body">
+                <h3><?= e($event['title']) ?></h3>
+                <p><?= e($event['description']) ?></p>
+                <p><?= number_format((int) $event['photo_count']) ?> รูป</p>
+                <div class="actions">
+                    <a class="btn" href="<?= e(url('find.php?event=' . $event['id'])) ?>">ค้นหารูปด้วยใบหน้า</a>
+                    <a class="btn secondary" href="<?= e(url('event.php?id=' . $event['id'])) ?>">ดูอัลบั้ม</a>
+                </div>
+            </div>
+        </article>
+    <?php endforeach; ?>
+</div>
+
+<?php if (!$events): ?>
+    <div class="notice">ยังไม่มีกิจกรรม ผู้ดูแลสามารถเพิ่มกิจกรรมและซิงก์รูปจาก Google Drive ได้จากระบบหลังบ้าน</div>
+<?php endif; ?>
+
+<?php if ($latestPhotos): ?>
+    <h2>รูปล่าสุด</h2>
+    <div class="photo-grid">
+        <?php foreach ($latestPhotos as $photo): ?>
+            <article class="photo">
+                <img loading="lazy" src="<?= e(url($photo['local_path'])) ?>" alt="<?= e($photo['file_name']) ?>">
+                <div class="meta"><?= e($photo['event_title']) ?></div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+<?php page_footer(); ?>

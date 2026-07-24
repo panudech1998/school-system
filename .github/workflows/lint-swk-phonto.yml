@@ -1,0 +1,25 @@
+name: SWK_Phonto Lint
+
+on:
+  push:
+    paths:
+      - "SWK_Phonto/**"
+      - ".github/workflows/lint-swk-phonto.yml"
+  pull_request:
+    paths:
+      - "SWK_Phonto/**"
+      - ".github/workflows/lint-swk-phonto.yml"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+      - name: Lint PHP files
+        run: find SWK_Phonto -type f -name "*.php" -print0 | xargs -0 -n1 php -l
+      - name: Compile Python source
+        run: python -m py_compile SWK_Phonto/face-service/app.py

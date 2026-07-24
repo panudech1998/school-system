@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/bootstrap.php';
+
+function page_header(string $title, bool $admin = false): void
+{
+    $siteTitle = setting('site_title', APP_NAME);
+    ?>
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= e($title) ?> | <?= e($siteTitle) ?></title>
+    <link rel="stylesheet" href="<?= e(url('assets/style.css')) ?>">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script defer src="<?= e(url('assets/app.js')) ?>"></script>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="<?= e(url()) ?>"><?= e($siteTitle) ?></a>
+    <nav>
+        <a href="<?= e(url()) ?>">หน้าหลัก</a>
+        <?php if ($admin): ?>
+            <a href="<?= e(url('admin/')) ?>">หลังบ้าน</a>
+            <a href="<?= e(url('logout.php')) ?>">ออกจากระบบ</a>
+        <?php else: ?>
+            <a href="<?= e(url('login.php')) ?>">ผู้ดูแล</a>
+        <?php endif; ?>
+    </nav>
+</header>
+<main class="container">
+<?php
+}
+
+function page_footer(): void
+{
+    ?>
+</main>
+<footer class="site-footer">© <?= date('Y') ?> <?= e(setting('site_title', APP_NAME)) ?></footer>
+</body>
+</html>
+<?php
+}
